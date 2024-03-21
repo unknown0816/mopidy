@@ -11,7 +11,7 @@ from mopidy import exceptions
 from mopidy.core import listener
 from mopidy.internal import deprecation, validation
 from mopidy.internal.models import TracklistState
-from mopidy.models import TlTrack, Track
+from mopidy.models import PrioTrack, TlTrack, Track
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,8 @@ class TracklistController:
         self.core = core
         self._next_tlid: int = 1
         self._tl_tracks: list[TlTrack] = []
+        self._tl_prio_tracks = []
+        self._tl_prio_number = 255
         self._version: int = 0
 
         self._consume: bool = False
@@ -36,6 +38,10 @@ class TracklistController:
     def get_tl_tracks(self) -> list[TlTrack]:
         """Get tracklist as list of :class:`mopidy.models.TlTrack`."""
         return self._tl_tracks[:]
+
+    def get_prio_tracks(self):
+        """Get tracklist as list of :class:`mopidy.models.TlTrack`."""
+        return self._tl_prio_tracks[:]
 
     def get_tracks(self) -> list[Track]:
         """Get tracklist as list of :class:`mopidy.models.Track`."""
@@ -265,6 +271,9 @@ class TracklistController:
 
         if not self._tl_tracks:
             return None
+
+        if len(self._tl_prio_tracks) > 0:
+            return self._tl_prio_tracks[0].tl_track
 
         if (
             self.get_random()
@@ -542,9 +551,50 @@ class TracklistController:
         # TODO: validate slice?
         return self._tl_tracks[start:end]
 
+    def sort_list(self, list):
+        if len(list) <= 1:
+            return list
+        else:
+            pivot = list[0]
+            left = [x for x in list[1:] if x.get_prio() >= pivot.get_prio()]
+            right = [x for x in list[1:] if x.get_prio() < pivot.get_prio()]
+            return self.sort_list(left) + [pivot] + self.sort_list(right)
+
+    def sort_tl_prio_tracks(self):
+        self._tl_prio_tracks = self.sort_list(self._tl_prio_tracks)
+
+    def set_prio_with_tlid(self, tlid):
+        tl_track = self._tl_tracks[self.index(None, tlid)]
+        prio_track = PrioTrack(self._tl_prio_number, tl_track)
+        self._tl_prio_tracks.append(prio_track)
+        if self._tl_prio_number > 1:
+            self._tl_prio_number -= 1
+
+    def set_prio_value_with_tlid(self, tlid, value):
+        tl_track = self._tl_tracks[self.index(None, tlid)]
+        prio_track = PrioTrack(value, tl_track)
+        self._tl_prio_tracks.append(prio_track)
+        self.sort_tl_prio_tracks()
+        if len(self._tl_prio_tracks) > 0:
+            lowest_prio = self._tl_prio_tracks[-1].get_prio()
+            if lowest_prio > 0 and lowest_prio < 256:
+                self._tl_prio_number = lowest_prio;
+                if self._tl_prio_number > 1:
+                    self._tl_prio_number -= 1
+
+    def _remove_first_tl_track_from_prio_list(self, tl_track):
+        for i, prio_track in enumerate(self._tl_prio_tracks):
+            if prio_track.tl_track == tl_track:
+                self._tl_prio_tracks.remove(prio_track)
+                return
+
     def _mark_playing(self, tl_track: TlTrack) -> None:
         """Internal method for :class:`mopidy.core.PlaybackController`."""
-        if self.get_random() and tl_track in self._shuffled:
+        if len(self._tl_prio_tracks) > 0:
+            self._remove_first_tl_track_from_prio_list(tl_track)
+            if len(self._tl_prio_tracks) == 0:
+                self._tl_prio_number = 255
+        elif self.get_random() and tl_track in self._shuffled:
             self._shuffled.remove(tl_track)
 
     def _mark_unplayable(self, tl_track: TlTrack | None) -> None:

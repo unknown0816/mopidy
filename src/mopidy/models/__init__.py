@@ -284,6 +284,50 @@ class TlTrack(ValidatedImmutableObject):
     def __iter__(self):
         return iter([self.tlid, self.track])
 
+class PrioTrack(ValidatedImmutableObject):
+
+    """
+    A prio track. Wraps a regular TlTrack and it's prio.
+
+    The use of :class:`PrioTrack` allows the same TlTrack to appear multiple times
+    in the prio-tracklist.
+
+    This class also accepts it's parameters as positional arguments. Both
+    arguments must be provided, and they must appear in the order they are
+    listed here.
+
+    This class also supports iteration, so your extract its values like this::
+
+        (prio, tl_track) = prio_track
+
+    :param prio: TlTrack priority
+    :type prio: int
+    :param tl_track: the TlTrack
+    :type tl_track: :class:`TlTrack`
+    """
+
+    #: The priority of the TlTrack
+    prio = fields.Integer(min=0, max=255)
+
+    #: The TlTrack. Read-only.
+    tl_track = fields.Field(type=TlTrack)
+
+    def __init__(self, *args, **kwargs):
+        if len(args) == 2 and len(kwargs) == 0:
+            kwargs["prio"] = args[0]
+            kwargs["tl_track"] = args[1]
+            args = []
+        super().__init__(*args, **kwargs)
+
+    def __iter__(self):
+        return iter([self.prio, self.tl_track])
+
+    def get_prio(self):
+        return self.prio
+
+    def set_prio(self, value):
+        self._set_field("prio", value)
+
 
 class Playlist(ValidatedImmutableObject):
     """:param uri: playlist URI
