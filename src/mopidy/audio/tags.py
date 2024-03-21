@@ -180,6 +180,8 @@ def convert_tags_to_track(tags):
     if album_kwargs.get("name"):
         track_kwargs["album"] = Album(**album_kwargs)
 
+    track_kwargs["any"] = "".join(tags.get(Gst.TAG_TITLE, [""])[0] + " " + tags.get(Gst.TAG_COMPOSER, [""])[0] + " " +tags.get(Gst.TAG_PERFORMER, [""])[0]+ " " +tags.get(Gst.TAG_GENRE, [""])[0]+ " " +tags.get(Gst.TAG_ALBUM, [""])[0]+ " " +tags.get(Gst.TAG_ARTIST, [""])[0]+ " " + tags.get(Gst.TAG_ALBUM_ARTIST, [""])[0])
+
     return Track(**track_kwargs)
 
 

@@ -247,6 +247,8 @@ class Track(ValidatedImmutableObject):
     #: equivalent timestamp or simply a version counter.
     last_modified = fields.Integer(min=0)
 
+    any = fields.String()
+
 
 class TlTrack(ValidatedImmutableObject):
     """A tracklist track. Wraps a regular track and it's tracklist ID.

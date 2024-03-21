@@ -448,7 +448,7 @@ class TracklistController:
 
         matches = self._tl_tracks
         for key, values in criteria.items():
-            matches = [ct for ct in matches if getattr(ct.track, key) in values]
+            matches = [ct for ct in matches if all(x.lower() in getattr(ct.track, key).lower() for x in values)]
         if tlids:
             matches = [ct for ct in matches if ct.tlid in tlids]
         return matches
